@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define TOKEN_BUFFER 64
 #define TOKEN_DELIMITER "\t\r\n\a"
@@ -55,7 +58,50 @@ char **parse_line(char *command) {
   return token_array;
 }
 
+int execute_command(char **token_array) {
+  pid_t pid;
+  int status;
+
+  if (token_array[0] == NULL)
+    return 1;
+
+  if (strcmp(token_array[0], "cd") == 0) {
+    if (token_array[1] == NULL) {
+      fprintf(stderr, "shell: expected argument to \"cd\"\n");
+    } else {
+      if (chdir(token_array[1]) != 0) {
+        perror("shell");
+      }
+    }
+    return 1;
+  } else if (strcmp(token_array[0], "exit") == 0) {
+    return 0;
+  }
+
+  pid = fork();
+  if (pid == 0) {
+    if (execvp(token_array[0], token_array) == -1) {
+      perror("shell");
+    }
+    exit(EXIT_FAILURE);
+  } else if (pid < 0) {
+    perror("shell");
+  } else {
+    do {
+      waitpid(pid, &status, WUNTRACED);
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+  }
+  return 1;
+}
+
 int main(void) {
-  char *line = read_line();
-  return EXIT_SUCCESS;
+  int status;
+  char *command;
+  char **token_array;
+  do {
+    printf("$   ");
+    command = read_line();
+    token_array = parse_line(command);
+    status = execute_command(token_array);
+  } while (status);
 }
