@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define TOKEN_BUFFER 64
-#define TOKEN_DELIMITER "\t\r\n\a"
+#define TOKEN_DELIMITER " \t\r\n\a"
 
 char *read_line() {
   char *commmand = NULL;
@@ -104,4 +104,6 @@ int main(void) {
     token_array = parse_line(command);
     status = execute_command(token_array);
   } while (status);
+  free(command);
+  free(token_array);
 }
